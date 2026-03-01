@@ -11,32 +11,24 @@ export const analyzeNewsLink = async (url: string): Promise<NewsInfo> => {
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
     contents: `Analyze this news link: ${url}. 
-    Please extract the core message and provide:
+    Please extract the core message and provide the results in STICT JSON format.
+    JSON keys: "topic" (string), "visualKeywords" (array of strings), "suggestedHeadline" (string), "suggestedSummary" (string).
+    
     1. A punchy, impactful headline for a card news slide (max 25 characters).
     2. A concise 2-3 sentence summary that covers the most important facts.
     3. The main subject topic.
     4. 5 visual keywords that represent the mood and subject of the news.
-    5. Must be in Korean`,
+    5. Must be in Korean.
+    
+    Return ONLY the raw JSON string.`,
     config: {
       tools: [{ googleSearch: {} }],
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          topic: { type: Type.STRING },
-          visualKeywords: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          },
-          suggestedHeadline: { type: Type.STRING },
-          suggestedSummary: { type: Type.STRING }
-        },
-        required: ["topic", "visualKeywords", "suggestedHeadline", "suggestedSummary"]
-      }
     }
   });
 
-  return JSON.parse(response.text);
+  // Since we removed JSON mode, we might need a fallback for parsing if AI adds markdown backticks
+  const text = response.text().replace(/```json|```/g, "").trim();
+  return JSON.parse(text);
 };
 
 export const analyzeNewsContent = async (content: string): Promise<NewsInfo> => {
@@ -51,7 +43,6 @@ export const analyzeNewsContent = async (content: string): Promise<NewsInfo> => 
     4. 5 visual keywords that represent the mood and subject of the news.
     5. Must be in Korean`,
     config: {
-      tools: [{ googleSearch: {} }],
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -69,7 +60,7 @@ export const analyzeNewsContent = async (content: string): Promise<NewsInfo> => 
     }
   });
 
-  return JSON.parse(response.text);
+  return JSON.parse(response.text());
 };
 
 export const analyzeStyle = async (base64Image: string): Promise<StyleAnalysis> => {
