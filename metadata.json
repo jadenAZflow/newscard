@@ -1,0 +1,7 @@
+{
+  "name": "NewsCard Visualizer",
+  "description": "Generate high-quality 640x640 card news background images by analyzing news links and matching the tone of your reference images.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
