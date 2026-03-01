@@ -9,7 +9,7 @@ const getAIClient = () => {
 export const analyzeNewsLink = async (url: string): Promise<NewsInfo> => {
   const ai = getAIClient();
   const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-3.0-flash',
     contents: `Analyze this news link: ${url}. 
     Please extract the core message and provide:
     1. A punchy, impactful headline for a card news slide (max 25 characters).
@@ -24,9 +24,9 @@ export const analyzeNewsLink = async (url: string): Promise<NewsInfo> => {
         type: Type.OBJECT,
         properties: {
           topic: { type: Type.STRING },
-          visualKeywords: { 
-            type: Type.ARRAY, 
-            items: { type: Type.STRING } 
+          visualKeywords: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
           },
           suggestedHeadline: { type: Type.STRING },
           suggestedSummary: { type: Type.STRING }
@@ -42,7 +42,7 @@ export const analyzeNewsLink = async (url: string): Promise<NewsInfo> => {
 export const analyzeNewsContent = async (content: string): Promise<NewsInfo> => {
   const ai = getAIClient();
   const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-3.0-flash',
     contents: `Analyze this news content: ${content}.
     Please extract the core message and provide:
     1. A punchy, impactful headline for a card news slide (max 25 characters).
@@ -102,7 +102,7 @@ export const analyzeStyle = async (base64Image: string): Promise<StyleAnalysis> 
 
 export const generateCardBackground = async (news: NewsInfo, style: StyleAnalysis): Promise<string> => {
   const ai = getAIClient();
-  
+
   const prompt = `Generate a high-resolution, professional background image (640x640) for a news card about "${news.topic}".
   Visual keywords: ${news.visualKeywords.join(', ')}.
   Mood: ${style.mood}.
