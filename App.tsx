@@ -2,10 +2,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Header from './components/Header';
 import { GenerationState, CardContent } from './types';
-import { analyzeNewsLink, analyzeStyle, generateCardBackground } from './services/geminiService';
+import { analyzeNewsLink, analyzeNewsContent, analyzeStyle, generateCardBackground } from './services/geminiService';
 
 const App: React.FC = () => {
   const [url, setUrl] = useState('');
+  const [content, setContent] = useState('');
+  const [activeTab, setActiveTab] = useState<'link' | 'content'>('link');
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
@@ -47,13 +49,21 @@ const App: React.FC = () => {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url) return;
+    if (activeTab === 'link' && !url) return;
+    if (activeTab === 'content' && !content) return;
 
-    setState({ ...state, isLoading: true, error: null, step: 'analyzing_link' });
+    setState({
+      ...state,
+      isLoading: true,
+      error: null,
+      step: activeTab === 'link' ? 'analyzing_link' : 'analyzing_content'
+    });
 
     try {
-      // 1. Analyze Link
-      const newsInfo = await analyzeNewsLink(url);
+      // 1. Analyze Content or Link
+      const newsInfo = activeTab === 'link'
+        ? await analyzeNewsLink(url)
+        : await analyzeNewsContent(content);
       
       // Update drafts immediately
       const newDraft = {
@@ -215,17 +225,50 @@ const App: React.FC = () => {
               </div>
               
               <form onSubmit={handleGenerate} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">News Link</label>
-                  <input
-                    type="url"
-                    required
-                    placeholder="https://..."
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                  />
+                <div className="flex bg-gray-100 p-1 rounded-xl mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('link')}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'link' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    Link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('content')}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'content' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    Content
+                  </button>
                 </div>
+
+                {activeTab === 'link' ? (
+                  <div className="space-y-1">
+                    <label htmlFor="url-input" className="text-xs font-bold text-gray-400 uppercase tracking-wider">News Link</label>
+                    <input
+                      id="url-input"
+                      type="url"
+                      required
+                      placeholder="https://..."
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <label htmlFor="content-input" className="text-xs font-bold text-gray-400 uppercase tracking-wider">News Content</label>
+                    <textarea
+                      id="content-input"
+                      required
+                      rows={5}
+                      placeholder="Paste your news content here..."
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                    />
+                  </div>
+                )}
                 
                 <div className="relative">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Style Reference (Optional)</label>
@@ -369,7 +412,7 @@ const App: React.FC = () => {
                     </div>
                     <div className="space-y-1">
                       <p className="text-gray-900 font-bold text-lg">{state.isLoading ? 'Synthesizing...' : 'No Preview Yet'}</p>
-                      <p className="text-gray-400 text-sm">Enter a news link to start creating your professional card news.</p>
+                      <p className="text-gray-400 text-sm">Enter a news link or paste content to start creating your professional card news.</p>
                     </div>
                   </div>
                 )}
