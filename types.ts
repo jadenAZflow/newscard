@@ -3,7 +3,7 @@ export interface GenerationState {
   isLoading: boolean;
   error: string | null;
   generatedImageUrl: string | null;
-  step: 'idle' | 'analyzing_link' | 'analyzing_style' | 'generating_image';
+  step: 'idle' | 'analyzing_link' | 'analyzing_content' | 'analyzing_style' | 'generating_image';
 }
 
 export interface NewsInfo {

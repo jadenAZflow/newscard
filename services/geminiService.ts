@@ -9,7 +9,7 @@ const getAIClient = () => {
 export const analyzeNewsLink = async (url: string): Promise<NewsInfo> => {
   const ai = getAIClient();
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-2.0-flash',
     contents: `Analyze this news link: ${url}. 
     Please extract the core message and provide:
     1. A punchy, impactful headline for a card news slide (max 25 characters).
@@ -39,10 +39,43 @@ export const analyzeNewsLink = async (url: string): Promise<NewsInfo> => {
   return JSON.parse(response.text);
 };
 
+export const analyzeNewsContent = async (content: string): Promise<NewsInfo> => {
+  const ai = getAIClient();
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: `Analyze this news content: ${content}.
+    Please extract the core message and provide:
+    1. A punchy, impactful headline for a card news slide (max 25 characters).
+    2. A concise 2-3 sentence summary that covers the most important facts.
+    3. The main subject topic.
+    4. 5 visual keywords that represent the mood and subject of the news.
+    5. Must be in Korean`,
+    config: {
+      tools: [{ googleSearch: {} }],
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          topic: { type: Type.STRING },
+          visualKeywords: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+          },
+          suggestedHeadline: { type: Type.STRING },
+          suggestedSummary: { type: Type.STRING }
+        },
+        required: ["topic", "visualKeywords", "suggestedHeadline", "suggestedSummary"]
+      }
+    }
+  });
+
+  return JSON.parse(response.text);
+};
+
 export const analyzeStyle = async (base64Image: string): Promise<StyleAnalysis> => {
   const ai = getAIClient();
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-2.0-flash',
     contents: {
       parts: [
         { inlineData: { data: base64Image, mimeType: 'image/png' } },
@@ -82,20 +115,18 @@ export const generateCardBackground = async (news: NewsInfo, style: StyleAnalysi
   - Keep the bottom half of the image relatively simple and clean to allow for text overlay.
   - The image should feel like a premium template background.`;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: { parts: [{ text: prompt }] },
+  const response = await ai.models.generateImages({
+    model: 'imagen-3.0-generate-001',
+    prompt: prompt,
     config: {
-      imageConfig: {
-        aspectRatio: "1:1",
-      }
+      numberOfImages: 1,
+      aspectRatio: "1:1",
     }
   });
 
-  for (const part of response.candidates[0].content.parts) {
-    if (part.inlineData) {
-      return `data:image/png;base64,${part.inlineData.data}`;
-    }
+  const imageBytes = response.generatedImages?.[0]?.image?.imageBytes;
+  if (imageBytes) {
+    return `data:image/png;base64,${imageBytes}`;
   }
 
   throw new Error("Failed to generate image background.");
