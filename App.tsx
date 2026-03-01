@@ -10,7 +10,13 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'link' | 'content'>('link');
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  
+
+  // Login State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginUser, setLoginUser] = useState('');
+  const [loginPass, setLoginPass] = useState('');
+  const [loginError, setLoginError] = useState(false);
+
   // App State
   const [state, setState] = useState<GenerationState>({
     isLoading: false,
@@ -64,17 +70,21 @@ const App: React.FC = () => {
       const newsInfo = activeTab === 'link'
         ? await analyzeNewsLink(url)
         : await analyzeNewsContent(content);
-      
+
       // Update drafts immediately
+      // AI sometimes returns JSON with varying keys. We fallback to empty string if undefined.
+      const parsedHeadline = newsInfo.suggestedHeadline || (newsInfo as any).headline || '';
+      const parsedSummary = newsInfo.suggestedSummary || (newsInfo as any).summary || '';
+
       const newDraft = {
         ...draftContent,
-        headline: newsInfo.suggestedHeadline,
-        summary: newsInfo.suggestedSummary
+        headline: parsedHeadline,
+        summary: parsedSummary
       };
       setDraftContent(newDraft);
       // Also update render state for immediate first preview
       setCardContent(newDraft);
-      
+
       let styleInfo = {
         mood: "Professional and clean",
         colors: ["White", "Blue", "Navy"],
@@ -137,6 +147,9 @@ const App: React.FC = () => {
       ctx.clearRect(0, 0, 640, 640);
       ctx.drawImage(img, 0, 0, 640, 640);
 
+      const headlineText = cardContent.headline || '헤드라인을 입력해주세요';
+      const summaryText = cardContent.summary || '여기에 요약 내용을 입력해주세요. 내용이 없다면 좌측 패널에서 입력 가능합니다.';
+
       // 2. Legibility Overlay (Gradient)
       const gradient = ctx.createLinearGradient(0, 300, 0, 640);
       gradient.addColorStop(0, 'rgba(0,0,0,0)');
@@ -146,10 +159,10 @@ const App: React.FC = () => {
       ctx.fillRect(0, 300, 640, 340);
 
       // 3. Text Styling
-      ctx.fillStyle = cardContent.textColor;
-      ctx.textAlign = cardContent.textAlign;
+      ctx.fillStyle = cardContent.textColor || '#FFFFFF';
+      ctx.textAlign = cardContent.textAlign || 'left';
       ctx.textBaseline = 'bottom';
-      
+
       const padding = 50;
       let xPos = 320;
       if (cardContent.textAlign === 'left') xPos = padding;
@@ -159,9 +172,9 @@ const App: React.FC = () => {
       ctx.font = 'normal 18px "Inter", sans-serif';
       ctx.shadowBlur = 4;
       ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      const summaryLines = wrapText(ctx, cardContent.summary, 640 - (padding * 2));
+      const summaryLines = wrapText(ctx, summaryText, 640 - (padding * 2));
       const summaryYStart = 590 - (summaryLines.length - 1) * 26;
-      
+
       summaryLines.forEach((line, i) => {
         ctx.fillText(line, xPos, summaryYStart + (i * 26));
       });
@@ -169,9 +182,9 @@ const App: React.FC = () => {
       // Draw Headline (Above Summary)
       ctx.font = 'bold 40px "Inter", sans-serif';
       ctx.shadowBlur = 8;
-      const headlineLines = wrapText(ctx, cardContent.headline, 640 - (padding * 2));
+      const headlineLines = wrapText(ctx, headlineText, 640 - (padding * 2));
       const headlineYStart = summaryYStart - 40 - (headlineLines.length - 1) * 48;
-      
+
       headlineLines.forEach((line, i) => {
         ctx.fillText(line, xPos, headlineYStart + (i * 48));
       });
@@ -205,13 +218,94 @@ const App: React.FC = () => {
     link.click();
   };
 
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Use import.meta.env for Vite or process.env (mapped in vite.config.ts)
+    const validUser = (import.meta as any).env?.VITE_USERNAME || process.env.USERNAME || 'gabang';
+    const validPass = (import.meta as any).env?.VITE_PASSWORD || process.env.PASSWORD || '10jobs';
+
+    if (loginUser === validUser && loginPass === validPass) {
+      setIsLoggedIn(true);
+      setLoginError(false);
+    } else {
+      setLoginError(true);
+    }
+  };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="flex justify-center flex-col items-center">
+            <div className="w-16 h-16 bg-indigo-600 rounded-2xl shadow-xl flex items-center justify-center transform -rotate-3 hover:rotate-0 transition-all duration-300">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+              </svg>
+            </div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 tracking-tight">
+              Card News Studio
+            </h2>
+          </div>
+        </div>
+
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white py-8 px-4 shadow-2xl shadow-indigo-100 sm:rounded-[2rem] sm:px-10 border border-gray-100">
+            <form className="space-y-6" onSubmit={handleLogin}>
+              <div>
+                <label className="block text-sm font-bold text-gray-700">Username</label>
+                <div className="mt-1">
+                  <input
+                    type="text"
+                    required
+                    value={loginUser}
+                    onChange={(e) => setLoginUser(e.target.value)}
+                    className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-medium transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700">Password</label>
+                <div className="mt-1">
+                  <input
+                    type="password"
+                    required
+                    value={loginPass}
+                    onChange={(e) => setLoginPass(e.target.value)}
+                    className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-medium transition-colors"
+                  />
+                </div>
+              </div>
+
+              {loginError && (
+                <div className="text-red-500 text-sm font-bold flex items-center space-x-1 justify-center bg-red-50 py-2 rounded-lg">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                  <span>Invalid username or password</span>
+                </div>
+              )}
+
+              <div>
+                <button
+                  type="submit"
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all active:scale-[0.98]"
+                >
+                  Sign In
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <Header />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          
+
           {/* Editor Controls */}
           <div className="lg:col-span-5 space-y-6">
             <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -223,7 +317,7 @@ const App: React.FC = () => {
                   </span>
                 )}
               </div>
-              
+
               <form onSubmit={handleGenerate} className="space-y-4">
                 <div className="flex bg-gray-100 p-1 rounded-xl mb-4">
                   <button
@@ -269,7 +363,7 @@ const App: React.FC = () => {
                     />
                   </div>
                 )}
-                
+
                 <div className="relative">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Style Reference (Optional)</label>
                   <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer min-h-[100px]">
@@ -278,9 +372,9 @@ const App: React.FC = () => {
                         <img src={previewUrl} className="h-16 w-16 object-cover rounded-lg shadow-sm" alt="Preview" />
                         <div className="flex-grow">
                           <p className="text-xs font-medium text-gray-500 truncate">{referenceImage?.name}</p>
-                          <button 
+                          <button
                             type="button"
-                            onClick={() => {setPreviewUrl(null); setReferenceImage(null);}} 
+                            onClick={() => { setPreviewUrl(null); setReferenceImage(null); }}
                             className="text-xs text-red-500 font-bold hover:underline"
                           >
                             Remove
@@ -322,7 +416,7 @@ const App: React.FC = () => {
                   <span>Step 2: Content Overlay</span>
                   <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded-full font-bold">Background Ready</span>
                 </h2>
-                
+
                 <div className="space-y-5">
                   <div>
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Headline</label>
@@ -330,17 +424,17 @@ const App: React.FC = () => {
                       type="text"
                       className="w-full mt-1 px-4 py-3 bg-gray-50 rounded-xl border border-transparent focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all font-bold text-lg"
                       value={draftContent.headline}
-                      onChange={(e) => setDraftContent({...draftContent, headline: e.target.value})}
+                      onChange={(e) => setDraftContent({ ...draftContent, headline: e.target.value })}
                     />
                   </div>
-                  
+
                   <div>
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Summary</label>
                     <textarea
                       rows={4}
                       className="w-full mt-1 px-4 py-3 bg-gray-50 rounded-xl border border-transparent focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all text-sm leading-relaxed"
                       value={draftContent.summary}
-                      onChange={(e) => setDraftContent({...draftContent, summary: e.target.value})}
+                      onChange={(e) => setDraftContent({ ...draftContent, summary: e.target.value })}
                     />
                   </div>
 
@@ -352,7 +446,7 @@ const App: React.FC = () => {
                           type="color"
                           className="h-10 w-12 rounded cursor-pointer"
                           value={draftContent.textColor}
-                          onChange={(e) => setDraftContent({...draftContent, textColor: e.target.value})}
+                          onChange={(e) => setDraftContent({ ...draftContent, textColor: e.target.value })}
                         />
                         <span className="text-xs font-mono text-gray-400">{draftContent.textColor}</span>
                       </div>
@@ -363,7 +457,7 @@ const App: React.FC = () => {
                         {(['left', 'center', 'right'] as const).map(a => (
                           <button
                             key={a}
-                            onClick={() => setDraftContent({...draftContent, textAlign: a})}
+                            onClick={() => setDraftContent({ ...draftContent, textAlign: a })}
                             className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all ${draftContent.textAlign === a ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                           >
                             {a.charAt(0).toUpperCase()}
@@ -396,13 +490,13 @@ const App: React.FC = () => {
           <div className="lg:col-span-7 flex flex-col items-center">
             <div className="sticky top-10 w-full max-w-[640px] flex flex-col items-center">
               <div className="bg-white p-3 rounded-[2.5rem] shadow-2xl border border-gray-100 overflow-hidden w-full aspect-square relative group">
-                <canvas 
-                  ref={canvasRef} 
-                  width={640} 
-                  height={640} 
+                <canvas
+                  ref={canvasRef}
+                  width={640}
+                  height={640}
                   className={`w-full h-full rounded-[1.8rem] transition-opacity duration-300 ${state.generatedImageUrl ? 'opacity-100 shadow-inner' : 'opacity-0'}`}
                 />
-                
+
                 {!state.generatedImageUrl && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-12 space-y-4">
                     <div className={`p-8 rounded-full ${state.isLoading ? 'bg-indigo-50' : 'bg-gray-50'} transition-colors`}>

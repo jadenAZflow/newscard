@@ -135,12 +135,15 @@ export const analyzeStyle = async (base64Image: string): Promise<StyleAnalysis> 
 export const generateCardBackground = async (news: NewsInfo, style: StyleAnalysis): Promise<string> => {
   const ai = getAIClient();
 
-  const prompt = `Generate a high-resolution, professional background image (640x640) for a news card about "${news.topic}".
-  Visual keywords: ${news.visualKeywords.join(', ')}.
-  Mood: ${style.mood}.
-  Colors to emphasize: ${style.colors.join(', ')}.
-  Technique: ${style.technique}.
-  Lighting: ${style.lighting}.
+  const visualKeywords = Array.isArray(news.visualKeywords) ? news.visualKeywords.join(', ') : '';
+  const colors = Array.isArray(style.colors) ? style.colors.join(', ') : '';
+
+  const prompt = `Generate a high-resolution, professional background image (640x640) for a news card about "${news.topic || 'news'}".
+  Visual keywords: ${visualKeywords}.
+  Mood: ${style.mood || 'Professional'}.
+  Colors to emphasize: ${colors}.
+  Technique: ${style.technique || 'Clean and minimal'}.
+  Lighting: ${style.lighting || 'Cinematic'}.
   
   CRITICAL RULES:
   - DO NOT include any text, letters, or logos in the image.
